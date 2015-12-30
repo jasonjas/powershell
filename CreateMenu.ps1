@@ -12,71 +12,6 @@
         CreateMenuList - List objects in a menu format
 #>
 
-########################## OUTPUT ERROR ##########################
-
-function OutputError {
-    <#
-        .SYNOPSIS
-            Get an error from try/catch
-            Output error to log and show error on console
-            Like Tee-Object, but Tee-Object in Powershell 2 does not contain -Append
-
-        .EXAMPLE
-            $_.Exception.Message.ToString() | OutputError -logFile "$ENV:LocalAppData\ErrorLog.txt" -Append
-            This will take the error message string and append it to the %localappdata%\ErrorLog.txt file
-
-        .PARAMETER Append
-            Append information to the log file
-
-        .PARAMETER logFile
-            Log file path to save string data to 
-            
-        .PARAMETER errorString
-            String containing error code/data/information to print to console.
-            Mandatory       
-    #>    
-
-    [CmdletBinding()]
-    param (
-            [parameter( Mandatory=$true,
-                        ValueFromPipeline=$true,
-                        HelpMessage="String containing error information")]
-            [Alias('InputObject')]
-            [ValidateNotNullOrEmpty()]
-            [string]$errorString,
-
-            [parameter( Mandatory=$false,
-                        ValueFromPipeline=$false,
-                        HelpMessage="String for location of log file.")]
-            [Alias('FilePath')]
-            [ValidateNotNullOrEmpty()]
-            [string]$logFile,
-
-            [parameter( Mandatory=$false,
-                        ValueFromPipeline=$false,
-                        HelpMessage="SWITCH - Append information to log file")]
-            [switch]$Append
-    )
-
-    # check if $logfile has been used
-    if ($logFile)
-    {
-        if ($Append)
-        {
-            # Output data to log file - Append
-            $errorString | Out-File -FilePath $logFile -Append
-        }
-        else 
-        {
-            # Output data to log file - no append
-            $errorString | Out-File -FilePath $logFile -Force
-        }
-    }
-
-    # Return the error string to use with something else if needed
-    return $errorString
-}
-
 ########################## CREATE MENU LIST ##########################
 
 function CreateMenuList {
@@ -413,4 +348,69 @@ function CreateMenuList {
             return -1
         }
     }
+}
+
+########################## OUTPUT ERROR ##########################
+
+function OutputError {
+    <#
+        .SYNOPSIS
+            Get an error from try/catch
+            Output error to log and show error on console
+            Like Tee-Object, but Tee-Object in Powershell 2 does not contain -Append
+
+        .EXAMPLE
+            $_.Exception.Message.ToString() | OutputError -logFile "$ENV:LocalAppData\ErrorLog.txt" -Append
+            This will take the error message string and append it to the %localappdata%\ErrorLog.txt file
+
+        .PARAMETER Append
+            Append information to the log file
+
+        .PARAMETER logFile
+            Log file path to save string data to 
+            
+        .PARAMETER errorString
+            String containing error code/data/information to print to console.
+            Mandatory       
+    #>    
+
+    [CmdletBinding()]
+    param (
+            [parameter( Mandatory=$true,
+                        ValueFromPipeline=$true,
+                        HelpMessage="String containing error information")]
+            [Alias('InputObject')]
+            [ValidateNotNullOrEmpty()]
+            [string]$errorString,
+
+            [parameter( Mandatory=$false,
+                        ValueFromPipeline=$false,
+                        HelpMessage="String for location of log file.")]
+            [Alias('FilePath')]
+            [ValidateNotNullOrEmpty()]
+            [string]$logFile,
+
+            [parameter( Mandatory=$false,
+                        ValueFromPipeline=$false,
+                        HelpMessage="SWITCH - Append information to log file")]
+            [switch]$Append
+    )
+
+    # check if $logfile has been used
+    if ($logFile)
+    {
+        if ($Append)
+        {
+            # Output data to log file - Append
+            $errorString | Out-File -FilePath $logFile -Append
+        }
+        else 
+        {
+            # Output data to log file - no append
+            $errorString | Out-File -FilePath $logFile -Force
+        }
+    }
+
+    # Return the error string to use with something else if needed
+    return $errorString
 }
