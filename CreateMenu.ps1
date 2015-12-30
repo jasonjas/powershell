@@ -248,6 +248,8 @@ function CreateMenuList {
                     Write-Host -ForegroundColor $displayColor -Object "There are $valuesCount items on $([Math]::Ceiling($valuesCount / 30)) menus."
                     # show which menu user is on
                     Write-Host -ForegroundColor $displayColor -Object "You are on menu # $menuCount."
+                    # show how to navigate menus
+                    Write-Host -ForegroundColor $displayColor -Object "Use N to go to next menu, P for previous."
                     # show how to exit menu
                     Write-Host -ForegroundColor $displayColor -Object "type EXIT to quit."
                     # create spacer
