@@ -85,6 +85,8 @@ function CreateMenuList {
             Creates a text menu system which shows 30 items per screen
             Allows the user to move between the menus and choose the item
             Function returns only the selected result
+            Will return -1 if an error occurs
+            Will return 0 if user chooses to exit
             
         .DESCRIPTION
             Create a list to choose from and return the result
@@ -92,12 +94,15 @@ function CreateMenuList {
             Maximum of 30 items listed at a time
             Will separate into different menus automatically
             Can move between menus with "n" and "p"
+            Verifies input is correct or else it will keep displaying the menu
 
         .EXAMPLE
-            List items as they are in the array.
             $arrayOfObjects = "corn","wheat","soy"
             $arrayOfObjects | CreateMenuList
+
+            List items as they are in the array.            
             Creates a list that looks like this:
+
             1. corn
             2. wheat
             3. soy
@@ -106,11 +111,11 @@ function CreateMenuList {
             Which menu item? (1-3): 
 
         .EXAMPLE
-            List items in alphabetical order (ascending) with -sort parameter
             $arrayOfObjects = "corn","wheat","soy"
-            $arrayOfObjects | CreateMenuList -sort
-            
+            $arrayOfObjects | CreateMenuList -sort            
+            List items in alphabetical order (ascending) with -sort parameter
             Creates a list that looks like this:
+
             1. corn
             2. soy
             3. wheat
@@ -122,6 +127,28 @@ function CreateMenuList {
             Get-Process | CreateMenuList -diplayProperty Name
 
             Will show the process names in a list on multiple menus
+
+        .EXAMPLE
+            Get-ChildItem c:\ | CreateMenuList
+            List directory items            
+
+        .EXAMPLE
+            Get-Content c:\file.txt | CreateMenuList
+            List items from a text file - each line will be a choice            
+
+        .EXAMPLE
+            Get-Content c:\file.txt | CreateMenuList -sort
+            Each line will be a choice in Ascending order            
+
+        .EXAMPLE
+            Import-CSV c:\files\file.csv | CreateMenuList -displayProperty Name
+            List items from a CSV - can use displayProperty for the headers
+            Imagine header names are "Name", "Comments", "Age", "user ID"
+            Will list the names on each row of the CSV
+
+        .EXAMPLE
+            Import-CSV c:\files\file.csv | CreateMenuList -displayProperty "user ID" -sort
+            Will list the user IDs on each row of the CSV in ascending order
 
         .PARAMETER Values
             Objects to list in the menu
@@ -156,10 +183,10 @@ function CreateMenuList {
             and how many menus exist
             
         .INPUTS
-            [object[]] - You can input almost anything from a command or manual entry.
+            [object[]] - You can input almost anything from a command or manual entry. However, it must contain text readable by the console.
             
         .OUTPUTS
-            [object] - Object that has been chosen from the list in the format it was added in                        
+            [object] - Object that has been chosen from the list in the type it was added in                        
     #>
 
     # declare parameters
@@ -286,12 +313,22 @@ function CreateMenuList {
                     Write-Host -ForegroundColor $displayColor -Object "There are $valuesCount items on $([Math]::Ceiling($valuesCount / 30)) menus."
                     # show which menu user is on
                     Write-Host -ForegroundColor $displayColor -Object "You are on menu # $menuCount."
+                    # show how to exit menu
+                    Write-Host -ForegroundColor $displayColor -Object "type EXIT to quit."
+                    # create spacer
+                    Write-Host ""
 
-                    # get input from user in string format - will convert to integer later if needed
+                    # get input from user in string format
                     [string]$selectMenuItem = Read-Host "Which menu item? (1-$valuesCount)"
-                
+                    
+                    # check if user typed EXIT - return if user did
+                    if ($selectMenuItem -ieq "exit")
+                    {
+                        # exit menu with 0
+                        return 0
+                    }
                     # case insensitive match for previous menu
-                    if ($selectMenuItem -ieq "p")
+                    elseif ($selectMenuItem -ieq "p")
                     {                        
                         # if currently on 1st menu, set counter to 0 to reset
                         # don't want to go negative
