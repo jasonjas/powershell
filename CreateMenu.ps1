@@ -256,7 +256,35 @@ function CreateMenuList {
                     Write-Host ""
 
                     # get input from user in string format
-                    [string]$selectMenuItem = Read-Host "Which menu item? (1-$valuesCount)"
+                    [string]$selectMenuItem = Read-Host "Which menu item? (1-$valuesCount)"                    
+
+                    # check if input data is a number or a string
+                    # convert to string and check range, otherwise check input for what to do
+                    # declare blank variable for outputting ToInt32 result if successful
+                    [int]$y = 0
+                    # contains a number, try to convert to an integer
+                    # Use .Net to try and convert to integer, get boolean value (true/false) to see if it was successful
+                    try {
+                        # try converting to integer with                         
+                        if ( [System.Int32]::TryParse($selectMenuItem,[ref]$y) )
+                        {
+                            # check for number within range
+                            # verify choice is between 1 and valuesCount
+                            if (($y -ge 1) -and ($y -le $valuesCount))
+                            {
+                                # break do-until loop
+                                break
+                            }                            
+                        }
+                    }
+                    catch {
+                        # Catch errors converting or checking input
+                        "Error converting or checking input" | OutputError -logFile $logFile -Append
+                        $_.Exception.Message.ToString() | OutputError -logFile $logFile -Append
+                        Read-Host "Exiting script"
+                        return -1
+                    }
+
                     
                     # check if user typed EXIT - return if user did
                     if ($selectMenuItem -ieq "exit")
@@ -304,22 +332,14 @@ function CreateMenuList {
                         # go to top of loop
                         continue
                     }
-   
-                    # verify choice is between 1 and valuesCount
-                    elseif (($selectMenuItem -ge 1) -and ($selectMenuItem -le $valuesCount))
-                    {                        
-                        # break do-while loop
-                        break                        
-                    }
 
-                    else
-                    {                        
+                    # this will run if nothing else is caught, equal to "else" due to the do-until loop
                         Read-Host "$selectMenuItem is not a valid choice. Go back to menu # 1"
                         # show first menu
                         $counter = 0
                         # go to top of loop
                         continue
-                    }
+                    
                 }
                 catch {
                     # catch any errors from selecting the menu item
