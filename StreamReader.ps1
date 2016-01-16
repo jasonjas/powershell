@@ -4,7 +4,7 @@ function StreamReader {
         .SYNOPSIS
             Read text file(s) and parse them line-by-line using Stream Reader
             Much more memory-friendly and faster than Get-Content
-            
+
         .NOTES
             Created By Jason Svatos
             Still working on this script - created 1/14/2016.
@@ -34,21 +34,36 @@ function StreamReader {
             Measure-Command -Expression {StreamReader -Files "C:\Windows\SoftwareDistribution\ReportingEvents.log" -readToEnd}
             vs
             Measure-Command -Expression {Get-Content "C:\Windows\SoftwareDistribution\ReportingEvents.log"}
+
+        .PARAMETER Files
+            [Mandatory] String or Array - Path to text file(s) to process for this command.
+
+        .PARAMETER List
+            [SWITCH] Default Selection, is not necessary to declare.
+            Use to list the contents of the file(s) input from $Files without doing anything to them.
+            This will read the file(s) line-by-line and return each line separately.
+
+        .PARAMETER Count
+            [SWITCH] Use to only return the amount of lines in the file(s)
+
+        .PARAMETER ReadToEnd
+            [SWITCH] Use to read the files to the end without parsing Line-By-Line.
     #>
 
 
     # create parameters
-    [CmdletBinding(DefaultParameterSetName=”Files")]
+    [CmdletBinding(DefaultParameterSetName=”List")]
     param ( 
         [parameter( Mandatory=$true,
                     ValueFromPipeline=$true,
-                    HelpMessage="String/Array - Files(s) to read information from",
-                    ParameterSetName="Files")]
-        [parameter(ParameterSetName="Count")]
-        [parameter(ParameterSetName="ReadToEnd")]
-        [parameter(ParameterSetName="Tail")]
-        [parameter(ParameterSetName="Head")]
+                    Position=0,
+                    HelpMessage="String/Array - Files(s) to read information from")]
         [string[]]$Files,
+        
+        [parameter( Mandatory=$false,
+                    HelpMessage="SWITCH - Use to just list the content of the files - Default",
+                    ParameterSetName="List")]
+        [switch]$List,
 
         [parameter( Mandatory=$false,
                     HelpMessage="SWITCH - Use to count total lines in file(s)",
@@ -60,7 +75,7 @@ function StreamReader {
                     ParameterSetName="ReadToEnd")]
         [switch]$ReadToEnd,
 
-        [parameter( Mandatory=$false,                    
+        [parameter( Mandatory=$false,
                     HelpMessage="Show last ## of lines of file, such as tail for Get-Content",
                     ParameterSetName="Tail")]
         [int]$Tail,
@@ -71,156 +86,164 @@ function StreamReader {
         [int]$Head
     )
 
-    # Set all errors to stop processing
-    $ErrorActionPreference = "Stop"    
-    # set count to 0 for amount of lines
-    $lineCount = 0        
+    Begin {
+        # Set all errors to stop processing
+        $ErrorActionPreference = "Stop"    
+        # set count to 0 for amount of lines
+        $lineCount = 0
+    }
 
-    # Loop through files
-    foreach ($file in $Files)
-    {
-        # check if the file exists first before doing anything
-        if (-not [System.IO.File]::Exists($file))
+    Process {
+
+        # Loop through files
+        foreach ($file in $Files)
         {
-            # ERROR - File does not exist!
-            Write-Error "$file does not exist or cannot be accessed"
-        }
-
-        try {
-            # this is to open files in a read/write mode without locking them
-            # Required if you want to view files like Get-Content does
-            # StreamReader will normally automatically lock files while it is reading them, which causes problems 
-            #   for open files and system files
-            $readFile = [System.io.File]::Open($file, 'Open', 'Read', 'ReadWrite')
-            # create new stream reader object
-            $streamReader = New-Object System.IO.StreamReader($readFile)
-        }
-        catch {
-            # Error creating StreamReader
-            Write-Host "Error Creating StreamReader object"
-            if ($streamReader -ne $null)
+            # check if the file exists first before doing anything
+            if (-not [System.IO.File]::Exists($file))
             {
-                # close the stream that is open on the file
-                $streamReader.Dispose()
+                # ERROR - File does not exist!
+                Write-Error "$file does not exist or cannot be accessed"
             }
-            throw $_
-        }
 
-        # Check if user wants to use Tail - or show just a number of last lines in code
-        # Will need to read to end of file, then count backwards to list correctly
-        if ($Tail)
-        {
             try {
-                # Read to end
-                $streamReader.ReadToEnd()
+                # this is to open files in a read/write mode without locking them
+                # Required if you want to view files like Get-Content does
+                # StreamReader will normally automatically lock files while it is reading them, which causes problems 
+                #   for open files and system files
+                $readFile = [System.io.File]::Open($file, 'Open', 'Read', 'ReadWrite')
+                # create new stream reader object
+                $streamReader = New-Object System.IO.StreamReader($readFile)
             }
             catch {
-                # error using tail parameter
+                # Error creating StreamReader
+                Write-Host "Error Creating StreamReader object"
                 if ($streamReader -ne $null)
                 {
                     # close the stream that is open on the file
                     $streamReader.Dispose()
                 }
-                Write-Output $_.Exception.Message.ToString()
+                throw $_
             }
-            finally {
-                # close the stream
-                if ($streamReader -ne $null)
-                {
-                    # disposing of the stream
-                    $streamReader.Dispose()
-                }
-            }
-        }
 
-        # check if user wants to read file as one large string instead of line-by-line
-        if ($ReadToEnd)
-        {
-            try {
-                $streamReader.ReadToEnd()
-            }
-            catch {
-                # Error reading to end of file
-                if ($streamReader -ne $null)
-                {
-                    # close the stream that is open on the file
-                    $streamReader.Dispose()
+            # Check if user wants to use Tail - or show just a number of last lines in code
+            # Will need to read to end of file, then count backwards to list correctly
+            if ($Tail)
+            {
+                try {
+                    # Read to end
+                    $streamReader.ReadToEnd()
                 }
-                Write-Output $_.Exception.Message.ToString()
+                catch {
+                    # error using tail parameter
+                    if ($streamReader -ne $null)
+                    {
+                        # close the stream that is open on the file
+                        $streamReader.Dispose()
+                    }
+                    Write-Output $_.Exception.Message.ToString()
+                }
+                finally {
+                    # close the stream
+                    if ($streamReader -ne $null)
+                    {
+                        # disposing of the stream
+                        $streamReader.Dispose()
+                    }
+                }
             }
-        }
 
-        # read file line-by-line
-        else {
-            try {
-                # Read the first line of the file
-                $line = $streamReader.ReadLine()                
-            }
-            catch {
-                # error reading first line
-                if ($streamReader -ne $null)
-                {
-                    # close the stream that is open on the file
-                    $streamReader.Dispose()
+            # check if user wants to read file as one large string instead of line-by-line
+            if ($ReadToEnd)
+            {
+                try {
+                    $streamReader.ReadToEnd()
                 }
-                Write-Host "Error reading first line."
-                Write-Output $_.Exception.Message.ToString()
+                catch {
+                    # Error reading to end of file
+                    if ($streamReader -ne $null)
+                    {
+                        # close the stream that is open on the file
+                        $streamReader.Dispose()
+                    }
+                    Write-Output $_.Exception.Message.ToString()
+                }
             }
+
+            # read file line-by-line
+            else {
+                try {
+                    # Read the first line of the file
+                    $line = $streamReader.ReadLine()
+                }
+                catch {
+                    # error reading first line
+                    if ($streamReader -ne $null)
+                    {
+                        # close the stream that is open on the file
+                        $streamReader.Dispose()
+                    }
+                    Write-Host "Error reading first line."
+                    Write-Output $_.Exception.Message.ToString()
+                }
         
-            try {
-                # Loop through the file until it has ended
-                while ($line -ne $null)
-                {    
-                    # increment the amount of lines by 1
-                    $lineCount += 1
-                    # check if $Count is used
-                    # if it is, skip displaying lines                    
-                    if (-not $Count)
-                    {
-                        # print the current line
-                        Write-Host $line
-                    }
-
-                    # check if Head is used
-                    # only print that many lines
-                    if ($Head)
-                    {
-                        # stop processing lines if $Head is reached
-                        if ($Head -eq $lineCount)
+                try {
+                    # Loop through the file until it has ended
+                    while ($line -ne $null)
+                    {    
+                        # increment the amount of lines by 1
+                        $lineCount += 1
+                        # check if $Count is used
+                        # if it is, skip displaying lines                    
+                        if (-not $Count)
                         {
-                            # break out of while-loop
-                            break
+                            # print the current line
+                            Write-Output $line
                         }
-                    }
 
-                    # read new line
-                    $line = $streamReader.ReadLine()                    
+                        # check if Head is used
+                        # only print that many lines
+                        if ($Head)
+                        {
+                            Write-Host $lineCount
+                            # stop processing lines if $Head is reached
+                            if ($Head -eq $lineCount)
+                            {
+                                # break out of while-loop
+                                break
+                            }
+                        }
+
+                        # read new line
+                        $line = $streamReader.ReadLine()                    
+                    }
                 }
-            }
-            catch {
-                # Error looping through lines
-                if ($streamReader -ne $null)
-                {
-                    # close the stream that is open on the file
-                    $streamReader.Dispose()
+                catch {
+                    # Error looping through lines
+                    if ($streamReader -ne $null)
+                    {
+                        # close the stream that is open on the file
+                        $streamReader.Dispose()
+                    }
+                    Write-Host "Error looping through the file(s)."
+                    Write-Output $_.Exception.Message.ToString()
                 }
-                Write-Host "Error looping through the file(s)."
-                Write-Output $_.Exception.Message.ToString()
-            }
-            finally {
-                # close the stream
-                if ($streamReader -ne $null)
-                {                    
-                    # disposing of the stream
-                    $streamReader.Dispose()
+                finally {
+                    # close the stream
+                    if ($streamReader -ne $null)
+                    {                    
+                        # disposing of the stream
+                        $streamReader.Dispose()
+                    }
                 }
             }
         }
     }
 
-    # print line count if requested
-    if ($Count)
-    {
-        Write-Host $lineCount
+    End {
+        # print line count if requested
+        if ($Count)
+        {
+            Write-Host $lineCount
+        }
     }
 }
