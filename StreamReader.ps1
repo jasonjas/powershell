@@ -48,6 +48,17 @@ function StreamReader {
 
         .PARAMETER ReadToEnd
             [SWITCH] Use to read the files to the end without parsing Line-By-Line.
+
+        .PARAMETER Tail
+            [INT] Read # amount of lines from end of file
+            Does not work yet
+
+        .PARAMETER Head
+            [INT] Read # amount of lines from top of file
+
+        .PARAMETER SkipLines
+            [INT] Skip # amount of lines from top of file
+            This will only work with Head, List, and Count
     #>
 
 
@@ -83,34 +94,48 @@ function StreamReader {
         [parameter( Mandatory=$false,
                     HelpMessage="Show first ## of line of file, such as head for Get-Content",
                     ParameterSetName="Head")]
-        [int]$Head
+        [int]$Head,
+
+        [parameter( Mandatory=$false,
+                    HelpMessage="Skip # amount of lines at the top of the file, Only works with Head, List, and Count")]
+        [int]$SkipLines
     )
 
     Begin {
         # Set all errors to stop processing
         $ErrorActionPreference = "Stop"    
-        # set count to 0 for amount of lines
-        $lineCount = 0
+        # set linecount to 0 for amount of lines
+        [int]$lineCount = 0
+        # set current line for each file - used to keep track of Head and Tail
+        [int]$currLine = 0
     }
 
-    Process {
-
+    Process {        
         # Loop through files
         foreach ($file in $Files)
         {
+            # reset current line for each file to 0
+            $currLine = 0
+            # keep track of $skipLines for each file
+            if ($SkipLines)
+            {                
+                # this gets set to false on each file if the line count is meant for skipping
+                # reset to $true for each file so every file gets lines skipped
+                [bool]$skip = $true
+            }
             # check if the file exists first before doing anything
-            if (-not [System.IO.File]::Exists($file))
+            if (-not [System.IO.File]::Exists($File))
             {
                 # ERROR - File does not exist!
-                Write-Error "$file does not exist or cannot be accessed"
+                Write-Error "$File does not exist or cannot be accessed"
             }
 
-            try {
+            try {                
                 # this is to open files in a read/write mode without locking them
                 # Required if you want to view files like Get-Content does
                 # StreamReader will normally automatically lock files while it is reading them, which causes problems 
                 #   for open files and system files
-                $readFile = [System.io.File]::Open($file, 'Open', 'Read', 'ReadWrite')
+                $readFile = [System.IO.File]::Open($File, 'Open', 'Read', 'ReadWrite')                
                 # create new stream reader object
                 $streamReader = New-Object System.IO.StreamReader($readFile)
             }
@@ -135,20 +160,7 @@ function StreamReader {
                 }
                 catch {
                     # error using tail parameter
-                    if ($streamReader -ne $null)
-                    {
-                        # close the stream that is open on the file
-                        $streamReader.Dispose()
-                    }
                     Write-Output $_.Exception.Message.ToString()
-                }
-                finally {
-                    # close the stream
-                    if ($streamReader -ne $null)
-                    {
-                        # disposing of the stream
-                        $streamReader.Dispose()
-                    }
                 }
             }
 
@@ -160,11 +172,6 @@ function StreamReader {
                 }
                 catch {
                     # Error reading to end of file
-                    if ($streamReader -ne $null)
-                    {
-                        # close the stream that is open on the file
-                        $streamReader.Dispose()
-                    }
                     Write-Output $_.Exception.Message.ToString()
                 }
             }
@@ -177,11 +184,6 @@ function StreamReader {
                 }
                 catch {
                     # error reading first line
-                    if ($streamReader -ne $null)
-                    {
-                        # close the stream that is open on the file
-                        $streamReader.Dispose()
-                    }
                     Write-Host "Error reading first line."
                     Write-Output $_.Exception.Message.ToString()
                 }
@@ -189,9 +191,33 @@ function StreamReader {
                 try {
                     # Loop through the file until it has ended
                     while ($line -ne $null)
-                    {    
+                    {
+                        # check if user wants to skip lines at the beginning of the file
+                        # Keep before $lineCount and $currLine so it doesn't count those lines in the totals
+                        if ($skip)
+                        {                            
+                            if ($SkipLines -eq $currLine)
+                            {
+                                # if skip line is met, reset current line
+                                $currLine = 0
+                                # Set to false to prevent skipping other lines as well
+                                $skip = $false
+                            }
+                            else
+                            {
+                                # read the current line
+                                $line = $streamReader.ReadLine()
+                                # increment current line
+                                $currLine += 1
+                                # go to next line without displaying
+                                Continue
+                            }
+                        }
+
                         # increment the amount of lines by 1
                         $lineCount += 1
+                        # increment the current file's line by 1
+                        $currLine += 1
                         # check if $Count is used
                         # if it is, skip displaying lines                    
                         if (-not $Count)
@@ -204,9 +230,8 @@ function StreamReader {
                         # only print that many lines
                         if ($Head)
                         {
-                            Write-Host $lineCount
                             # stop processing lines if $Head is reached
-                            if ($Head -eq $lineCount)
+                            if ($Head -eq $currLine)
                             {
                                 # break out of while-loop
                                 break
@@ -216,24 +241,12 @@ function StreamReader {
                         # read new line
                         $line = $streamReader.ReadLine()                    
                     }
+                    # close the current file in the stream reader                    
+                    $streamReader.Dispose()
                 }
                 catch {
-                    # Error looping through lines
-                    if ($streamReader -ne $null)
-                    {
-                        # close the stream that is open on the file
-                        $streamReader.Dispose()
-                    }
                     Write-Host "Error looping through the file(s)."
                     Write-Output $_.Exception.Message.ToString()
-                }
-                finally {
-                    # close the stream
-                    if ($streamReader -ne $null)
-                    {                    
-                        # disposing of the stream
-                        $streamReader.Dispose()
-                    }
                 }
             }
         }
@@ -244,6 +257,12 @@ function StreamReader {
         if ($Count)
         {
             Write-Host $lineCount
+        }
+        # close the stream
+        if ($streamReader -ne $null)
+        {
+            # disposing of the stream
+            $streamReader.Dispose()
         }
     }
 }
