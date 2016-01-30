@@ -3,6 +3,7 @@ function Get-ChangedFiles {
         .SYNOPSIS
             Get list of folders / files in a directory by LastAccessTime or LastWriteTime
             Uses Get-ChildItem to go through folders/files and return based on parameters
+            Powershell 2.0+
 
         .PARAMETER Path
             [String] - Required
