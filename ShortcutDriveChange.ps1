@@ -27,7 +27,7 @@
         A drive named "pictures" pointing to "c:\users\jill\documents\pictures"
 
     .EXAMPLE
-        MappedDrivesIcons -oldPath "c:\users\jack" -newPath "c:\users\jill"
+        DesktopIcons -oldPath "c:\users\jack" -newPath "c:\users\jill"
         Will change all the user desktop icons pointing to or starting with c:\users\jack to c:\users\jill
 
         A shortcut named "pictures" pointing to "c:\users\jack\documents\pictures"
