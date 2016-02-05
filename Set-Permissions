@@ -19,6 +19,8 @@ function Set-Permissions {
             The User(s) that will be added / removed from the permissions
 
         .PARAMETER Permission
+            DYNAMIC PARAMETER
+            Only shows up / required when using grant / deny PermSetting parameter
             Can only specify the simple rights for NTFS permissions. If you want specific rights, you must use something else.
             Can only use these letters:
 
@@ -53,21 +55,26 @@ function Set-Permissions {
             This will remove either Granted or Denied permissions. Default is to remove Granted permissions.
     #>
 
+    <#
+        # Old parameter - it is a dynamic parameter now
+        [parameter( Mandatory=$true)]
+        [ValidateSet("N","F","M","RX","R","W","D")]                    
+        [string]$Permission,
+    #>
+
     param (
         [parameter( Mandatory=$true,
                     ValueFromPipeline=$true,
                     Position=0)]
+        [Alias("Directory","Path")]
         [string[]]$Folder,
 
         [parameter( Mandatory=$true,
                     Position=1)]
         [string[]]$User,
 
-        [parameter( Mandatory=$true)]
-        [ValidateSet("N","F","M","RX","R","W","D")]                    
-        [string]$Permission,
-
         [parameter( Mandatory=$false,
+                    Position=2,
                     HelpMessage="Use to declare to either Grant / Deny / Remove permissions. Default is Grant.")]
         [ValidateSet("grant","remove","deny")]
         [string]$PermSetting = "grant",
@@ -86,8 +93,47 @@ function Set-Permissions {
         [string]$DenyCriteria = "grant"
     )
 
+    # Create Dynamic Parameter for Permissions
+    DynamicParam {
+        # This will create a parameter which is only required if $PermSetting is anything but "deny"
+        if ($PermSetting -ne "remove")
+        {
+            # Create parameter Attribute object
+            $permissionAttribute = New-Object System.Management.Automation.ParameterAttribute
+            $permissionAttribute.Mandatory=$true
+            $permissionAttribute.HelpMessage="Enter simple permission to Grant / Remove from folder(s) / file(s). Can be only [N,F,M,RX,R,W,D].
+            For more granular control of permissions, use icacls.exe instead."
+            # Create array of valid values to allow on the parameter
+            [string[]]$validValues = @("N","F","M","RX","R","W","D")
+            # create Valid values for the parameter
+            $permissionValidate = New-Object System.Management.Automation.ValidateSetAttribute($validValues)
+
+            # Create an atribute collection object for the attribute we just created
+            $attributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+
+            # Add the custom attributes to the collection
+            $attributeCollection.Add($permissionAttribute)
+            # Add the validate set attributes to the collection
+            $attributeCollection.Add($permissionValidate)
+
+            # Add the parameter specifying the attribute collection
+            # This defines the name of the parameter, the type, and the attributes (String, Type, Attributes)
+            $permissionParam = New-Object System.Management.Automation.RuntimeDefinedParameter('Permission', [string], $attributeCollection)
+
+            # Expose the name of our dynamic parameter
+            # Create run-time parameter dictionary
+            $paramDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+            # Add the parameter name and runtime parameter
+            $paramDictionary.Add('Permission',$permissionParam)
+            return $paramDictionary
+        }
+    }
+
     Begin {
         # Variables
+
+        # Map dynamic parameter to Permission variable
+        $Permission = $PSBoundParameters.Permission
         
         # Create variables to make the below foreach loops easier to create and maintain/update
 
@@ -126,7 +172,6 @@ function Set-Permissions {
 
     Process {
         try {
-            Write-Host "icacls.exe $($f + $permissionCriteria) $PermissionSetting ("$User" + "$perm") /T /C"
             # loop through users to apply permissions for
             foreach ($u in $User)
             {
