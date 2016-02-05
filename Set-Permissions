@@ -1,0 +1,158 @@
+function Set-Permissions {
+    <#
+        .SYNOPSIS
+            Set permissions on folder(s) that are either defined or piped in. Must be a string or array.
+            Can give multiple users/groups access by specifying multiple users in string-array format.
+
+        .DESCRIPTION
+            Uses the basic syntax of icacls.exe to add / remove permissions to folders and/or files.
+
+        .NOTES
+            Created By Jason Svatos
+            Created on 2/4/2016
+            Version 1
+
+        .PARAMETER Folder
+            Directory / Folder(s) that will be changed with the user(s) and permission specified
+
+        .PARAMETER User
+            The User(s) that will be added / removed from the permissions
+
+        .PARAMETER Permission
+            Can only specify the simple rights for NTFS permissions. If you want specific rights, you must use something else.
+            Can only use these letters:
+
+            N - no access
+            F - full access
+            M - modify access
+            RX - read and execute access
+            R - read-only access
+            W - write-only access
+            D - delete access
+
+        .PARAMETER PermSetting
+            Used to either grant, deny, or remove permissions.
+            Can be either Grant, Deny, or Remove. Default is Grant.
+
+        .PARAMETER Inheritance
+            Use to specify that you want inheritance on the folder(s) and files for these permissions. 
+            Will use both Container Inherit (CI) and Object Inherit (OI)
+
+        .PARAMETER Recurse
+            Use to specify you want all sub-folders and files to have these same permissions / changes applied.
+
+        .PARAMTER Quiet
+            Use to suppress success messages on the console.
+
+        .PARAMETER Replace
+            Can only be used with "Grant" PermSetting
+            Replaces all other permissions with just this permission.
+
+        .PARAMETER DenyCriteria
+            Can be either "grant" or "deny". Used only with "remove" on PermSetting parameter.
+            This will remove either Granted or Denied permissions. Default is to remove Granted permissions.
+    #>
+
+    param (
+        [parameter( Mandatory=$true,
+                    ValueFromPipeline=$true,
+                    Position=0)]
+        [string[]]$Folder,
+
+        [parameter( Mandatory=$true,
+                    Position=1)]
+        [string[]]$User,
+
+        [parameter( Mandatory=$true)]
+        [ValidateSet("N","F","M","RX","R","W","D")]                    
+        [string]$Permission,
+
+        [parameter( Mandatory=$false,
+                    HelpMessage="Use to declare to either Grant / Deny / Remove permissions. Default is Grant.")]
+        [ValidateSet("grant","remove","deny")]
+        [string]$PermSetting = "grant",
+
+        [switch]$Inheritance=$true,
+        
+        [switch]$Recurse,
+
+        [switch]$Quiet,
+
+        [parameter( Mandatory=$false,
+                    HelpMessage="Use to replace granted rights when using 'grant' PermSetting")]        
+        [switch]$Replace,
+        
+        [ValidateSet("grant","deny")]
+        [string]$DenyCriteria = "grant"
+    )
+
+    Begin {
+        # Variables
+        
+        # Create variables to make the below foreach loops easier to create and maintain/update
+
+        try {
+            # Set permissions up based on inheritance switch        
+            if ($Inheritance) {$perm = ":(OI)(CI)$Permission"}        
+            else {$perm = ":$Permission"}
+
+            # set permission settings and occurrences based on PermSetting for "REMOVE"
+            if ($PermSetting -eq "remove")
+            {
+                # removing permissions removes the user completely, not just specific permissions
+                $perm = ""
+                if ($DenyCriteria -ne "grant")
+                {
+                    # Removes only denied permissions
+                    $permissionCriteria = ":d"
+                }
+                else {
+                    # Removes only granted permissions
+                    $permissionCriteria = ":g"
+                }
+            }
+
+            # Set Permission setting (Remove / Deny / Grant)
+            #  to correct string
+            $PermissionSetting = "/" + $PermSetting
+        }
+        catch {
+            # Catch any issues
+            $_.Exception.ToString()
+            Read-Host "Error creating variables"
+            return -1
+        }
+    }
+
+    Process {
+        try {
+            Write-Host "icacls.exe $($f + $permissionCriteria) $PermissionSetting ("$User" + "$perm") /T /C"
+            # loop through users to apply permissions for
+            foreach ($u in $User)
+            {
+                # loop through folders to apply permissions to
+                foreach ($f in $Folder)
+                {
+                    # if recurse is chosen
+                    if ($Recurse)
+                    {
+                        # add / remove permissions and continue on errors
+                        icacls.exe $f $($PermissionSetting  + $permissionCriteria) ("$User" + "$perm") /T /C
+                    }
+                    # if recurse is not chosen
+                    else 
+                    {
+                        # add / remove permissions and continue on errors
+                        icacls.exe $f $($PermissionSetting  + $permissionCriteria) ("$User" + "$perm") /C
+                    }
+                }
+            }
+        }
+        catch {
+            # catch any errors
+            $_.Exception.ToString()
+            Read-Host "Error applying permissions"
+            return -1
+        }
+    }
+}
