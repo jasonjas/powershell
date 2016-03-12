@@ -1,7 +1,13 @@
 ﻿function Set-Permission {
     <#
         .SYNOPSIS
-            Add / Remove NTFS rights to files or folders
+            Add / Remove / Replace NTFS permissions to files or folders
+            
+        .DESCRIPTION
+            Modifies ACLs of folders and files using Get-Acl and Set-Acl.
+            Created by Jason Svatos
+            Create on 3/10/2016
+            Modified 3/12/2016 (Added EnableInheritance switch parameter and Action:Replace parameter)
 
         .EXAMPLE
             Set-Permission -Path C:\Temp -User domain\user -Permission FullControl
