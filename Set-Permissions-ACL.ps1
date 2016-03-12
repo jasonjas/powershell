@@ -28,7 +28,7 @@
             "Domain\Username" of the account to add/remove rights for
 
         .PARAMETER Permissions
-            Permissions to grant to the user
+            Permissions to grant to the user - separate multiple permissions with a comma ",".
 
         .PARAMETER Action
             Add: Add permissions to the folder / file only for the specified account
