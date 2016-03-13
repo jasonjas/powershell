@@ -8,6 +8,7 @@ function Set-Permission {
             Created by Jason Svatos
             Created on 3/10/2016
             Modified 3/12/2016 (Added EnableInheritance switch parameter and Action:Replace parameter)
+            Modified 3/13/2016 (Added recurse and changed error catching on settting permissions)
 
         .EXAMPLE
             Set-Permission -Path C:\Temp -User domain\user -Permission FullControl
