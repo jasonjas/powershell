@@ -57,7 +57,6 @@ function AWS-Backup {
     $backupFiles = gc $backupFilesList
 
     function BackupFiles() {
-        #$backupfiles = gc "$desktop\BackupFilesS3.txt"
         [int]$folderChange = 0
 
         # backup files
