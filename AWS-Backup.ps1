@@ -54,8 +54,6 @@ function AWS-Backup {
     Set-DefaultAWSRegion $region
     # special characters that do not show up correctly in the text file
     # Will be used to replace characters later
-    $SpecChars = '!', '£', '%', '&', '^', '*', '@', '=', '+', '¬', '`', '<', '>', '?', ';', '#', '~', '®', 'é', '–', "'", '"', "’", "[", "]"
-    $remspecchars = [string]::join('|', ($SpecChars | % {[regex]::escape($_)}))
     $backupFiles = gc $backupFilesList
 
     function BackupFiles() {
@@ -116,6 +114,9 @@ function AWS-Backup {
     
         # set change if hash CSV file is updated
         [int]$change = 0
+
+        $SpecChars = '!', '£', '%', '&', '^', '*', '@', '=', '+', '¬', '`', '<', '>', '?', ';', '#', '~', '®', 'é', '–', "'", '"', "’", "[", "]"
+        $remspecchars = [string]::join('|', ($SpecChars | % {[regex]::escape($_)}))
 
         # Check if config file exists, if not - create it
         if (-not (Test-Path $ConfigFile)) {
