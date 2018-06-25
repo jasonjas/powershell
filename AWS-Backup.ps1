@@ -14,6 +14,8 @@ function AWS-Backup {
             Will have to specify full location to each file if you want to upload manually instead. 
 
         .NOTES
+            Requires AWS Powershell cmdlets
+            See https://aws.amazon.com/powershell/
             Requires AWS Credentials to be configured prior to running script.
             See https://docs.aws.amazon.com/powershell/latest/reference/items/Set-AWSCredentials.html
 
