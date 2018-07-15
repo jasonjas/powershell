@@ -1,40 +1,6 @@
 Import-Module awspowershell
 
 function AWS-Backup {
-    <#
-        .SYNOPSIS
-            Backup files to S3 based on locations in a text file
-            Can back up individual files or whole directories
-            Requires AWS Credentials to be configured prior to running script.
-            See https://docs.aws.amazon.com/powershell/latest/reference/items/Set-AWSCredentials.html 
-            
-        .DESCRIPTION
-            Will store file hashes in a text file and compare each time the file is backed up.
-            If any changes in directory, the whole directory will be re-uploaded. 
-            Will have to specify full location to each file if you want to upload manually instead. 
-
-        .NOTES
-            Requires AWS Credentials to be configured prior to running script.
-            See https://docs.aws.amazon.com/powershell/latest/reference/items/Set-AWSCredentials.html
-
-        .PARAMETER AwsCredentials
-            Saved AWS Credential
-
-        .PARAMETER region
-            Region to upload files to
-
-        .PARAMETER ConfigFile
-            Path to list of hashes for existing files, or path to store the hashes for files. 
-
-        .PARAMETER bucketName
-            Name of bucket in S3 to upload files to
-
-        .PARAMETER backupFilesList 
-            Path to location of files/directories to backup
-
-        .PARAMETER FullRefresh
-            Removes ConfigFile hash list and re-uploads all files/directories whether they have been uploaded previously or not
-    #>
     param (
         [parameter(mandatory=$false,
                    Position=0)]
@@ -42,18 +8,15 @@ function AWS-Backup {
         [String]$region = "",
         [String]$ConfigFile = "",
         [String]$bucketName = "",
-        [String]$backupFilesList = "",
-        [Switch]$FullRefresh
+        [String]$backupFilesList = ""
     )
-
-    if ($FullRefresh) {
-        if ([System.IO.File]::Exists($ConfigFile)) {Remove-Item $ConfigFile}
-    }
 
     Set-AWSCredentials -StoredCredentials $AwsCredentials
     Set-DefaultAWSRegion $region
     # special characters that do not show up correctly in the text file
     # Will be used to replace characters later
+    $SpecChars = '!', '£', '%', '&', '^', '*', '@', '=', '+', '¬', '`', '<', '>', '?', ';', '#', '~', '®', 'é', '–', "'", '"', "’", "[", "]"
+    $remspecchars = [string]::join('|', ($SpecChars | % {[regex]::escape($_)}))
     $backupFiles = gc $backupFilesList
 
     function BackupFiles() {
@@ -62,6 +25,7 @@ function AWS-Backup {
 
         # backup files
         foreach ($file in $backupfiles) {
+            $file = $file.Replace('"',"")
             # check for comment characters and ignore
             if ($file.Trim().StartsWith("#")) {}
             elseif ((Get-Item $file) -is [System.IO.DirectoryInfo]) {
@@ -87,10 +51,10 @@ function AWS-Backup {
             {
                 # is a file
                 if ((Set-FileHash -Path $file) -ne $null) {
-                    Write-Output "Uploading file $file"
+                    Write-Host "Uploading file $file"
                     Write-S3Object -BucketName $bucketName -File $file
                 }
-                else {Write-Output "Skipping $file"}
+                else {Write-Host "Skipping $file"}
             }
         }
 
@@ -106,6 +70,9 @@ function AWS-Backup {
 
             .PARAMETER Path
                 Path to the file to set the hash for
+
+            .PARAMETER ConfigFile
+                Path to location of config file containing hashes
         #>
 
         param(
@@ -115,9 +82,6 @@ function AWS-Backup {
     
         # set change if hash CSV file is updated
         [int]$change = 0
-
-        $SpecChars = '!', '£', '%', '&', '^', '*', '@', '=', '+', '¬', '`', '<', '>', '?', ';', '#', '~', '®', 'é', '–', "'", '"', "’", "[", "]"
-        $remspecchars = [string]::join('|', ($SpecChars | % {[regex]::escape($_)}))
 
         # Check if config file exists, if not - create it
         if (-not (Test-Path $ConfigFile)) {
@@ -171,6 +135,9 @@ function AWS-Backup {
             .PARAMETER Path
                 Path of file to search for hash on
 
+            .PARAMETER ConfigFile
+                Path to location of config file containing hashes
+
             .PARAMETER List
                 List hashes instead of searching for a single object
 
@@ -204,3 +171,5 @@ function AWS-Backup {
 
     BackupFiles
 }
+
+AWS-Backup
