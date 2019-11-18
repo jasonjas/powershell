@@ -43,7 +43,7 @@ function Set-Permissions {
         .PARAMETER Recurse
             Use to specify you want all sub-folders and files to have these same permissions / changes applied.
 
-        .PARAMTER Quiet
+        .PARAMETER Quiet
             Use to suppress success messages on the console.
 
         .PARAMETER Replace
