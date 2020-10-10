@@ -32,9 +32,14 @@ function check-server-ports() {
                 Write-Output "${s}:${p}"
                 write-output "Connected: $value"
                 Write-Output "----------------"
+                if ($value) {
+                    $client.EndConnect($result)
+                }
+                $client.Close()
             }
             catch {
                 Write-Output $_
+                $client.close()
             }
         }
     }
